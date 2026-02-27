@@ -59,9 +59,32 @@ function getPublicState() {
     ? Math.max(0, Math.ceil((auctionState.timerEndsAt - now) / 1000))
     : 0;
 
+  // Ensure every sold entry has a full player snapshot (fixes old DB entries missing name)
+  const soldPlayers = (auctionState.soldPlayers || []).map((entry) => {
+    const p = entry?.player;
+    if (p && (p.name != null && p.name !== '')) {
+      return entry;
+    }
+    const playerId = p?.id != null ? Number(p.id) : null;
+    const full = playerId != null ? findPlayerById(playerId) : null;
+    if (!full) return entry;
+    return {
+      ...entry,
+      player: {
+        id: full.id,
+        name: full.name,
+        position: full.position,
+        rating: full.rating,
+        basePrice: full.basePrice,
+        photo: full.photo || '',
+      },
+    };
+  });
+
   return {
     auctionState: {
       ...auctionState,
+      soldPlayers,
       timerRemaining: computedTimerRemaining,
     },
     teams: getTeams(),
