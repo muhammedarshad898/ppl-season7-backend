@@ -9,6 +9,14 @@ async function upsertTeam(req, res) {
   return res.json(team);
 }
 
+function uploadTeamLogo(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded. Use field name "logo".' });
+  }
+  const url = `/api/teams/logo/${req.file.filename}`;
+  return res.json({ url });
+}
+
 async function deleteTeam(req, res) {
   const removed = await removeTeam(req.params.id);
   if (!removed) return res.status(404).json({ error: 'Team not found' });
@@ -18,5 +26,6 @@ async function deleteTeam(req, res) {
 module.exports = {
   listTeams,
   upsertTeam,
+  uploadTeamLogo,
   deleteTeam,
 };

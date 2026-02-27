@@ -1,6 +1,12 @@
 node_modules/
 .env
 .env.local
-uploads/
+# Ignore uploaded files but keep the directory structure in repo
+uploads/*
+!uploads/.gitkeep
+!uploads/teams/
+!uploads/teams/.gitkeep
+!uploads/players/
+!uploads/players/.gitkeep
 backups/
 *.log

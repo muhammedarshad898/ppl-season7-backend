@@ -72,6 +72,10 @@ async function initConfig() {
   const fromDb = await loadConfig();
   if (fromDb) {
     config = { ...config, ...fromDb };
+    if (Number(config.auctionTimerSeconds) === 10) {
+      config.auctionTimerSeconds = 30;
+      await saveConfig(config);
+    }
   } else {
     await saveConfig(config);
   }

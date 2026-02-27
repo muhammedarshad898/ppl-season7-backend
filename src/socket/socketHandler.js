@@ -1,5 +1,5 @@
 const { verifyAdminPassword, updateConfig } = require('../models/Config');
-const { addPlayer, editPlayer, removePlayer, resetPlayer } = require('../models/Player');
+const { addPlayer, editPlayer, removePlayer } = require('../models/Player');
 const { saveTeam, removeTeam } = require('../models/Team');
 const { verifyAdminToken } = require('../services/authService');
 const { exportBackupToFile, importBackup } = require('../services/backupService');
@@ -11,6 +11,7 @@ const {
   markSold,
   markUnsold,
   revertLastSold,
+  resetPlayerToAvailable,
   setIdle,
   resetAuctionAndTeams,
 } = require('../services/auctionService');
@@ -83,15 +84,16 @@ function registerSocketHandlers(io) {
     } else {
       const player = await markUnsold();
       if (player) {
+        stopAuctionTimer();
         broadcastState();
         io.emit('playerUnsold', { player });
+        /* Keep phase 'unsold' so UI shows "Unfortunately unsold" until admin starts next */
+        return;
       }
     }
 
     io.emit('timerExpired');
     stopAuctionTimer();
-
-    // Return to idle so admin can start the next player without clicking Idle
     await setIdle();
     broadcastState();
   }
@@ -203,11 +205,10 @@ function registerSocketHandlers(io) {
       const player = await markUnsold();
       if (!player) return;
 
+      stopAuctionTimer();
       broadcastState();
       io.emit('playerUnsold', { player });
-      stopAuctionTimer();
-      await setIdle();
-      broadcastState();
+      /* Keep phase 'unsold' so UI can show "Unfortunately unsold" until admin starts next auction */
     });
 
     socket.on('admin:revertLastSold', async (_, cb) => {
@@ -242,10 +243,20 @@ function registerSocketHandlers(io) {
       stopAuctionTimer();
     });
 
-    socket.on('admin:addPlayer', async (player) => {
-      if (denyIfNotAdmin(socket)) return;
-      await addPlayer(player);
-      broadcastState();
+    socket.on('admin:addPlayer', async (player, cb) => {
+      console.log('[admin:addPlayer] received', player?.name ?? '(no name)');
+      if (denyIfNotAdmin(socket)) {
+        if (typeof cb === 'function') cb('Admin authentication required.');
+        return;
+      }
+      try {
+        await addPlayer(player);
+        broadcastState();
+        if (typeof cb === 'function') cb(null);
+      } catch (err) {
+        console.error('admin:addPlayer error', err);
+        if (typeof cb === 'function') cb(err?.message || 'Failed to add player');
+      }
     });
 
     socket.on('admin:editPlayer', async (updated) => {
@@ -262,7 +273,7 @@ function registerSocketHandlers(io) {
 
     socket.on('admin:resetPlayer', async ({ playerId }) => {
       if (denyIfNotAdmin(socket)) return;
-      await resetPlayer(playerId);
+      await resetPlayerToAvailable(playerId);
       broadcastState();
     });
 

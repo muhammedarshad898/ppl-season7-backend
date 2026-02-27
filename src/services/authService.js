@@ -6,7 +6,7 @@ function getJwtSecret() {
 
 function signAdminToken(payload = { role: 'admin' }) {
   return jwt.sign(payload, getJwtSecret(), {
-    expiresIn: process.env.JWT_EXPIRES_IN || '8h',
+    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   });
 }
 

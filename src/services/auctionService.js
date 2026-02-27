@@ -4,6 +4,7 @@ const {
   findPlayerById,
   resetAllSoldOrUnsoldPlayers,
   persistPlayers,
+  resetPlayer,
 } = require('../models/Player');
 const {
   getTeams,
@@ -76,7 +77,7 @@ async function startAuction(playerId) {
 
   const currentState = getAuctionState();
   const config = getConfig();
-  const timerSeconds = Number(config.auctionTimerSeconds || 10);
+  const timerSeconds = Number(config.auctionTimerSeconds || 30);
   setPreviousBidSnapshot(null);
   setAuctionState({
     phase: 'live',
@@ -150,7 +151,7 @@ async function placeBid({ teamId, amount }) {
     amount: numericAmount,
     ts: Date.now(),
   });
-  auctionState.timerEndsAt = Date.now() + (Number(auctionState.timerSeconds || 10) * 1000);
+  auctionState.timerEndsAt = Date.now() + (Number(auctionState.timerSeconds || 30) * 1000);
 
   await persistAuctionState();
   return { ok: true, team, amount: numericAmount, player: auctionState.currentPlayer };
@@ -286,6 +287,40 @@ async function setIdle() {
   await persistAuctionState();
 }
 
+/**
+ * Set a sold/unsold player back to available: remove from sold history,
+ * remove from team roster and adjust team spent, then reset player.
+ */
+async function resetPlayerToAvailable(playerId) {
+  const player = findPlayerById(playerId);
+  if (!player) return null;
+
+  const auctionState = getAuctionState();
+  const soldPlayers = auctionState.soldPlayers || [];
+  const entryIndex = soldPlayers.findIndex((s) => Number(s?.player?.id) === Number(playerId));
+  let teamName = player.soldTo;
+  let price = Number(player.soldPrice || 0);
+
+  if (entryIndex >= 0) {
+    const entry = soldPlayers[entryIndex];
+    teamName = entry.team || teamName;
+    price = Number(entry.price ?? price);
+    auctionState.soldPlayers = soldPlayers.filter((_, i) => i !== entryIndex);
+  }
+
+  const team = getTeams().find((t) => t.name === teamName);
+  if (team) {
+    team.spent = Math.max(0, Number(team.spent || 0) - price);
+    const idx = team.players.findIndex((p) => Number(p.id) === Number(playerId));
+    if (idx >= 0) team.players.splice(idx, 1);
+    await persistTeams();
+  }
+
+  await resetPlayer(playerId);
+  await persistAuctionState();
+  return player;
+}
+
 async function resetAuctionAndTeams() {
   await resetAllTeams();
   await resetAllSoldOrUnsoldPlayers();
@@ -297,7 +332,7 @@ async function resetAuctionAndTeams() {
     leadingTeam: null,
     bidHistory: [],
     soldPlayers: [],
-    timerSeconds: Number(getConfig().auctionTimerSeconds || 10),
+    timerSeconds: Number(getConfig().auctionTimerSeconds || 30),
     timerEndsAt: null,
   });
 
@@ -315,6 +350,7 @@ module.exports = {
   markSold,
   markUnsold,
   revertLastSold,
+  resetPlayerToAvailable,
   setIdle,
   resetAuctionAndTeams,
 };

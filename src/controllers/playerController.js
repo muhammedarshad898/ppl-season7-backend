@@ -52,9 +52,18 @@ function listPlayers(req, res) {
   return res.json(getPlayers());
 }
 
+function uploadPlayerPhoto(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded. Use field name "photo".' });
+  }
+  const url = `/api/players/photo/${req.file.filename}`;
+  return res.json({ url });
+}
+
 module.exports = {
   uploadImage,
   getImage,
+  uploadPlayerPhoto,
   createPlayer,
   updatePlayer,
   deletePlayer,

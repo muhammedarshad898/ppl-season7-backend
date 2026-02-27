@@ -6,7 +6,7 @@ const defaultConfig = {
   thresholdBid: 200,
   highIncrement: 20,
   lowIncrement: 10,
-  auctionTimerSeconds: 10,
+  auctionTimerSeconds: 30,
   teamBudgetLimit: 1500,
   adminPassword: 'ppl2024',
 };

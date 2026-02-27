@@ -1,5 +1,14 @@
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
+
+// Ensure uploads directory and subdirs exist (used by Multer for team logos & player photos)
+const uploadsDir = path.join(__dirname, 'uploads');
+try {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  fs.mkdirSync(path.join(uploadsDir, 'teams'), { recursive: true });
+  fs.mkdirSync(path.join(uploadsDir, 'players'), { recursive: true });
+} catch (_) {}
 
 const express = require('express');
 const http = require('http');
@@ -29,6 +38,11 @@ app.use(helmet({
 app.use(cors(createCorsOptions()));
 app.use(apiLimiter);
 app.use(express.json({ limit: '15mb' }));
+
+const uploadsTeamsPath = path.join(__dirname, 'uploads', 'teams');
+const uploadsPlayersPath = path.join(__dirname, 'uploads', 'players');
+app.use('/api/teams/logo', express.static(uploadsTeamsPath));
+app.use('/api/players/photo', express.static(uploadsPlayersPath));
 
 app.get('/health', (_req, res) => {
   res.status(200).json({ ok: true, service: 'ppl-auction', ts: new Date().toISOString() });
