@@ -74,12 +74,15 @@ function registerSocketHandlers(io) {
     if (state.leadingTeam) {
       const result = await markSold();
       if (result.ok) {
+        stopAuctionTimer();
         broadcastState();
         io.emit('playerSold', {
           player: result.player,
           team: result.team,
           price: result.price,
         });
+        /* Keep phase 'sold' so UI shows congratulations until admin starts next */
+        return;
       }
     } else {
       const player = await markUnsold();
@@ -189,15 +192,14 @@ function registerSocketHandlers(io) {
       const result = await markSold();
       if (!result.ok) return;
 
+      stopAuctionTimer();
       broadcastState();
       io.emit('playerSold', {
         player: result.player,
         team: result.team,
         price: result.price,
       });
-      stopAuctionTimer();
-      await setIdle();
-      broadcastState();
+      /* Keep phase 'sold' so UI shows congratulations until admin starts next auction */
     });
 
     socket.on('admin:unsold', async () => {

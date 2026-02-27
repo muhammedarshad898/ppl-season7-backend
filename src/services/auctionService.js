@@ -196,7 +196,20 @@ async function markSold() {
   auctionState.timerEndsAt = null;
   auctionState.soldPlayers = [
     ...auctionState.soldPlayers,
-    { player, team: team.name, teamColor: team.color, teamLogo: team.logo, price },
+    {
+      player: {
+        id: player.id,
+        name: player.name,
+        position: player.position,
+        rating: player.rating,
+        basePrice: player.basePrice,
+        photo: player.photo || '',
+      },
+      team: team.name,
+      teamColor: team.color,
+      teamLogo: team.logo,
+      price,
+    },
   ];
 
   setPreviousBidSnapshot(null);
