@@ -353,6 +353,22 @@ async function resetPlayerToAvailable(playerId) {
   }
 
   await resetPlayer(playerId);
+
+  // If the reset player was the one currently shown as sold (congratulations on monitors),
+  // clear sold state so the overlay disappears on projector and manager.
+  if (
+    auctionState.phase === 'sold' &&
+    auctionState.currentPlayer &&
+    Number(auctionState.currentPlayer.id) === Number(playerId)
+  ) {
+    auctionState.phase = 'idle';
+    auctionState.currentPlayer = null;
+    auctionState.currentBid = 0;
+    auctionState.leadingTeam = null;
+    auctionState.bidHistory = [];
+    setPreviousBidSnapshot(null);
+  }
+
   await persistAuctionState();
   return player;
 }
